@@ -45,6 +45,24 @@ func Execute() {
 	}
 }
 
+func createPRModel() (ui.PRModel, *os.File) {
+	var loggerFile *os.File
+
+	var fileErr error
+	newConfigFile, fileErr := os.OpenFile("debug.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if fileErr == nil {
+		log.SetOutput(newConfigFile)
+		log.SetTimeFormat(time.Kitchen)
+		log.SetReportCaller(true)
+		log.SetLevel(log.DebugLevel)
+		log.Debug("Logging to debug.log")
+	} else {
+		loggerFile, _ = tea.LogToFile("debug.log", "debug")
+		slog.Print("Failed setting up logging", fileErr)
+	}
+	return ui.NewPRModel(), loggerFile
+}
+
 func createModel(configPath string, debug bool) (ui.Model, *os.File) {
 	var loggerFile *os.File
 
@@ -113,10 +131,32 @@ func init() {
 		"help for gh-dash",
 	)
 
+	rootCmd.Flags().Bool("pr", false, "view a single pull request")
+
 	rootCmd.Run = func(_ *cobra.Command, _ []string) {
 		debug, err := rootCmd.Flags().GetBool("debug")
 		if err != nil {
 			log.Fatal("Cannot parse debug flag", err)
+		}
+
+		pr, err := rootCmd.Flags().GetBool("pr")
+		if err != nil {
+			log.Fatal("Cannot parse pr flag", err)
+		}
+
+		if pr {
+			model, logger := createPRModel()
+			if logger != nil {
+				defer logger.Close()
+			}
+			p := tea.NewProgram(
+				model,
+				tea.WithAltScreen(),
+			)
+			if _, err := p.Run(); err != nil {
+				log.Fatal("Failed starting the TUI", err)
+			}
+			return
 		}
 
 		// see https://github.com/charmbracelet/lipgloss/issues/73

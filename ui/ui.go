@@ -456,7 +456,7 @@ func (m Model) View() string {
 	s.WriteString(m.tabs.View(m.ctx))
 	s.WriteString("\n")
 	currSection := m.getCurrSection()
-	mainContent := ""
+	mainContent := "hihihi"
 	if currSection != nil {
 		mainContent = lipgloss.JoinHorizontal(
 			lipgloss.Top,

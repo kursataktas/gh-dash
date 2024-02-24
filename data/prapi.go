@@ -130,16 +130,18 @@ type Reviews struct {
 	Nodes []Review
 }
 
+type ReviewThread struct {
+	Id           string
+	IsOutdated   bool
+	OriginalLine int
+	StartLine    int
+	Line         int
+	Path         string
+	Comments     ReviewComments `graphql:"comments(first: 100)"`
+}
+
 type ReviewThreads struct {
-	Nodes []struct {
-		Id           string
-		IsOutdated   bool
-		OriginalLine int
-		StartLine    int
-		Line         int
-		Path         string
-		Comments     ReviewComments `graphql:"comments(first: 10)"`
-	}
+	Nodes []ReviewThread
 }
 
 type PageInfo struct {
