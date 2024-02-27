@@ -19,6 +19,21 @@ var (
 	TabsHeight         = TabsBorderHeight + TabsContentHeight
 	ViewSwitcherMargin = 1
 	TableHeaderHeight  = 2
+	ThinBorder         = lipgloss.Border{
+		Top:          lipgloss.NormalBorder().Top,
+		Bottom:       "▁",
+		Left:         "▏",
+		Right:        "▕",
+		TopLeft:      lipgloss.NormalBorder().TopLeft,
+		TopRight:     lipgloss.NormalBorder().TopRight,
+		BottomLeft:   "🭼",
+		BottomRight:  "🭿",
+		MiddleLeft:   lipgloss.NormalBorder().MiddleLeft,
+		MiddleRight:  lipgloss.NormalBorder().MiddleRight,
+		Middle:       lipgloss.NormalBorder().Middle,
+		MiddleTop:    lipgloss.NormalBorder().MiddleTop,
+		MiddleBottom: lipgloss.NormalBorder().MiddleBottom,
+	}
 )
 
 type CommonStyles struct {

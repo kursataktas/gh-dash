@@ -14,6 +14,7 @@ type Common struct {
 	ctx           context.Context
 	Width, Height int
 	Styles        *ghctx.Styles
+	Theme         *theme.Theme
 	KeyMap        *keys.KeyMap
 	Logger        *log.Logger
 }
@@ -28,6 +29,7 @@ func NewCommon(ctx context.Context, theme theme.Theme, width, height int) Common
 		ctx:    ctx,
 		Width:  width,
 		Height: height,
+		Theme:  &theme,
 		Styles: &styles,
 		KeyMap: &keys.Keys,
 		Logger: log.FromContext(ctx).WithPrefix("ui"),

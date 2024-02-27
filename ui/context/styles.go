@@ -77,6 +77,11 @@ type Styles struct {
 		ViewsSeparator lipgloss.Style
 		InactiveView   lipgloss.Style
 	}
+	Comment struct {
+		Root   lipgloss.Style
+		Header lipgloss.Style
+		Body   lipgloss.Style
+	}
 }
 
 func InitStyles(theme theme.Theme) Styles {
@@ -228,6 +233,14 @@ func InitStyles(theme theme.Theme) Styles {
 	s.Tabs.InactiveView = lipgloss.NewStyle().
 		Background(theme.FaintBorder).
 		Foreground(theme.SecondaryText)
+
+	s.Comment.Root = lipgloss.NewStyle()
+	s.Comment.Body = lipgloss.NewStyle().
+		BorderForeground(theme.FaintBorder).
+		Padding(1, 1, 0, 1).
+		Border(common.ThinBorder, false, true, true, true)
+	s.Comment.Header = lipgloss.NewStyle().
+		Background(theme.SelectedBackground)
 
 	return s
 }

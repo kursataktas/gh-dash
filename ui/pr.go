@@ -3,6 +3,7 @@ package ui
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -11,6 +12,7 @@ import (
 	"github.com/dlvhdr/gh-dash/data"
 	"github.com/dlvhdr/gh-dash/ui/pr"
 	"github.com/dlvhdr/gh-dash/ui/theme"
+	"github.com/dlvhdr/gh-dash/utils"
 )
 
 // Component represents a Bubble Tea model that implements a SetSize function.
@@ -25,7 +27,7 @@ type PRModel struct {
 
 func NewPRModel() PRModel {
 	ctx := context.Background()
-	c := pr.NewCommon(ctx, *theme.DefaultTheme, 0, 0)
+	c := pr.NewCommon(ctx, *theme.DefaultTheme, 80, 0)
 	return PRModel{common: c}
 }
 
@@ -86,6 +88,20 @@ var mockPr = data.PullRequestData{
 				Body:      "In in ea id laborum nulla minim fugiat eiusmod voluptate nisi. Cupidatat enim sit anim excepteur magna dolor eu. Ea ipsum aute consequat laboris sint. Qui id irure aliqua aliqua cupidatat voluptate nisi incididunt dolor consectetur do cillum dolor adipisicing reprehenderit. Deserunt non Lorem voluptate quis cillum. Nulla consequat consequat Lorem aute consectetur ex sunt cillum fugiat veniam ea minim sit eu officia. Sit duis esse culpa ipsum enim dolore exercitation incididunt sunt officia anim esse.",
 				UpdatedAt: time.Now().AddDate(0, 0, -2),
 			},
+			{
+				Author: struct{ Login string }{
+					Login: "tombenzera",
+				},
+				Body:      "Officia in veniam magna minim esse consectetur ea culpa cupidatat veniam non eiusmod velit velit elit. Adipisicing est dolore cillum esse sunt nulla excepteur veniam veniam do adipisicing in non et non.",
+				UpdatedAt: time.Now().AddDate(0, 0, -1),
+			},
+			{
+				Author: struct{ Login string }{
+					Login: "dmmulroy",
+				},
+				Body:      "Irure magna sint officia do. Officia in veniam magna minim esse consectetur ea culpa cupidatat veniam non eiusmod velit velit elit. Adipisicing est dolore cillum esse sunt nulla excepteur veniam veniam do adipisicing in non et non. Reprehenderit nostrud ipsum amet irure ad reprehenderit dolore irure amet ullamco labore qui. Et proident cillum cupidatat amet adipisicing enim minim ex consequat laborum. Officia veniam amet enim nostrud exercitation laborum minim ut quis dolor fugiat do.",
+				UpdatedAt: time.Now().AddDate(0, 0, -1),
+			},
 		},
 	},
 	LatestReviews: data.Reviews{
@@ -118,8 +134,8 @@ var mockPr = data.PullRequestData{
 }
 
 func (m PRModel) View() string {
-	content := ""
-	content = m.headerView()
+	content := lipgloss.NewStyle().MarginLeft(3).MarginBottom(1).Render(m.headerView())
+	content = lipgloss.JoinVertical(lipgloss.Left, content, m.commentsView())
 
 	return content
 }
@@ -161,4 +177,55 @@ func (m *PRModel) headerView() string {
 		branch,
 	))
 	return lipgloss.JoinVertical(lipgloss.Left, content, pills)
+}
+
+func (m *PRModel) commentsView() string {
+	comments := make([]string, 0, len(mockPr.Comments.Nodes))
+	for i, c := range mockPr.Comments.Nodes {
+		cView := m.commentView(c)
+		border := lipgloss.NormalBorder()
+
+		vLine := ""
+		if i < len(mockPr.Comments.Nodes)-1 {
+			vLine = lipgloss.JoinVertical(lipgloss.Left, strings.Split(strings.Repeat(border.Left, lipgloss.Height(cView)), "")...)
+		}
+
+		tl := ""
+		if i == 0 {
+			tl = border.TopLeft
+		} else if i == len(mockPr.Comments.Nodes)-1 {
+			tl = border.BottomLeft
+		} else {
+			tl = border.MiddleLeft
+		}
+		hLine := tl + border.Top + border.Top
+
+		line := lipgloss.NewStyle().
+			Foreground(m.common.Theme.FaintBorder).
+			Render(
+				lipgloss.JoinVertical(lipgloss.Left, hLine, vLine),
+			)
+		comments = append(comments, lipgloss.JoinHorizontal(lipgloss.Top, line, cView))
+	}
+
+	return lipgloss.JoinVertical(lipgloss.Left, comments...)
+}
+
+func (m *PRModel) commentView(comment data.Comment) string {
+	s := m.common.Styles
+	sc := s.Comment
+	w := m.common.Width
+
+	author := sc.Header.Copy().PaddingRight(1).Render(s.Common.MainTextStyle.Render(comment.Author.Login))
+	time := sc.Header.Render(
+		s.Common.FaintTextStyle.Render(fmt.Sprintf("commented %s", utils.TimeElapsed(comment.UpdatedAt))),
+	)
+
+	header := sc.Header.Copy().Width(w).Padding(0, 1).Render(lipgloss.JoinHorizontal(lipgloss.Top, author, time))
+
+	body := sc.Body.Width(w - 2).Render(comment.Body)
+
+	content := lipgloss.JoinVertical(lipgloss.Left, header, body)
+
+	return content
 }
