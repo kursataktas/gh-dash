@@ -1,19 +1,32 @@
 package ui
 
 import (
-	"strings"
+	"context"
+	"fmt"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/dlvhdr/gh-dash/data"
+	"github.com/dlvhdr/gh-dash/ui/pr"
+	"github.com/dlvhdr/gh-dash/ui/theme"
 )
 
+// Component represents a Bubble Tea model that implements a SetSize function.
+type Component interface {
+	tea.Model
+	SetSize(width, height int)
+}
+
 type PRModel struct {
+	common pr.Common
 }
 
 func NewPRModel() PRModel {
-	return PRModel{}
+	ctx := context.Background()
+	c := pr.NewCommon(ctx, *theme.DefaultTheme, 0, 0)
+	return PRModel{common: c}
 }
 
 func (m PRModel) Init() tea.Cmd {
@@ -105,10 +118,47 @@ var mockPr = data.PullRequestData{
 }
 
 func (m PRModel) View() string {
-	content := strings.Builder{}
-	content.WriteString(mockPr.Title + "\n")
-	content.WriteString("2nd line\n")
-	content.WriteString("3nd line\n")
-	content.WriteString("4nd line\n")
-	return content.String()
+	content := ""
+	content = m.headerView()
+
+	return content
+}
+
+func (m *PRModel) headerView() string {
+	content := ""
+	s := m.common.Styles
+
+	name := s.Common.FaintTextStyle.Render(mockPr.Repository.NameWithOwner)
+	title := lipgloss.JoinHorizontal(
+		lipgloss.Left,
+		s.Common.MainTextStyle.Render(mockPr.Title),
+		" ",
+		s.Common.FaintTextStyle.Render(fmt.Sprintf("#%d", mockPr.Number)),
+	)
+	content = lipgloss.JoinVertical(lipgloss.Left, content, name, title)
+
+	state := s.PrSidebar.PillStyle.Copy().
+		Background(s.Colors.OpenPR).
+		Render(mockPr.State)
+	mergeable := s.PrSidebar.PillStyle.Copy().
+		Background(s.Colors.MergedPR).
+		Render(mockPr.Mergeable)
+
+	branch := s.Common.FaintTextStyle.Render(lipgloss.JoinHorizontal(
+		lipgloss.Left,
+		"󰘬 ",
+		mockPr.BaseRefName,
+		"  ",
+		mockPr.HeadRefName,
+	))
+
+	pills := lipgloss.NewStyle().MarginTop(1).Render(lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		state,
+		" ",
+		mergeable,
+		"  ",
+		branch,
+	))
+	return lipgloss.JoinVertical(lipgloss.Left, content, pills)
 }
