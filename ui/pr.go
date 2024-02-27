@@ -125,7 +125,20 @@ var mockPr = data.PullRequestData{
 				StartLine:    1,
 				Line:         1,
 				Path:         "ui/pr.go",
-				Comments:     data.ReviewComments{},
+				Comments: data.ReviewComments{
+					Nodes: []data.ReviewComment{
+						{
+							Author: struct{ Login string }{
+								Login: "kentcdodds",
+							},
+							Body:      "Eu ipsum laboris duis irure et laborum.",
+							UpdatedAt: time.Now().AddDate(0, 0, -1),
+							StartLine: 0,
+							Line:      0,
+						},
+					},
+					TotalCount: 0,
+				},
 			},
 		},
 	},
