@@ -34,6 +34,7 @@ var (
 		MiddleTop:    lipgloss.NormalBorder().MiddleTop,
 		MiddleBottom: lipgloss.NormalBorder().MiddleBottom,
 	}
+	StatusContextWidth = 50
 )
 
 type CommonStyles struct {

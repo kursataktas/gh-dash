@@ -283,25 +283,24 @@ func (m *PRModel) commentView(comment data.Comment) string {
 func (m *PRModel) statusesView() string {
 	statuses := make([]string, 0)
 	for _, commit := range mockPr.Commits.Nodes {
-		for _, context := range commit.Commit.StatusCheckRollup.Contexts.Nodes {
-			status := m.statusView(context)
+		for i, context := range commit.Commit.StatusCheckRollup.Contexts.Nodes {
+			status := m.statusView(context, i == len(commit.Commit.StatusCheckRollup.Contexts.Nodes)-1)
 			statuses = append(statuses, status)
-			statuses = append(statuses, "")
 		}
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Left, statuses...)
 }
 
-func (m *PRModel) statusView(context data.Context) string {
+func (m *PRModel) statusView(context data.Context, isLast bool) string {
 	if context.Typename == "StatusContext" {
-		return m.statusContext(context.StatusContext)
+		return m.statusContext(context.StatusContext, isLast)
 	} else {
-		return m.checkRun(context.CheckRun)
+		return m.checkRun(context.CheckRun, isLast)
 	}
 }
 
-func (m *PRModel) statusContext(statusContext data.StatusContext) string {
+func (m *PRModel) statusContext(statusContext data.StatusContext, isLast bool) string {
 	var glyph string
 	if statusContext.State == "SUCCESS" {
 		glyph = m.common.Styles.Common.SuccessGlyph
@@ -313,11 +312,10 @@ func (m *PRModel) statusContext(statusContext data.StatusContext) string {
 	status = lipgloss.JoinVertical(lipgloss.Left, status, string(statusContext.Description))
 
 	status = lipgloss.JoinHorizontal(lipgloss.Top, glyph, " ", status)
-
-	return status
+	return m.applyStatusBorder(status, isLast)
 }
 
-func (m *PRModel) checkRun(checkRun data.CheckRun) string {
+func (m *PRModel) checkRun(checkRun data.CheckRun, isLast bool) string {
 	var glyph string
 	if checkRun.Conclusion == "SUCCESS" {
 		glyph = m.common.Styles.Common.SuccessGlyph
@@ -329,5 +327,13 @@ func (m *PRModel) checkRun(checkRun data.CheckRun) string {
 	status = lipgloss.JoinVertical(lipgloss.Left, status, string(checkRun.Text))
 
 	status = lipgloss.JoinHorizontal(lipgloss.Top, glyph, " ", status)
-	return status
+	return m.applyStatusBorder(status, isLast)
+}
+
+func (m *PRModel) applyStatusBorder(status string, isLast bool) string {
+	s := m.common.Styles.StatusContext.Root.Copy()
+	if isLast {
+		s = s.BorderStyle(lipgloss.NormalBorder())
+	}
+	return s.Render(status)
 }

@@ -82,6 +82,10 @@ type Styles struct {
 		Header lipgloss.Style
 		Body   lipgloss.Style
 	}
+
+	StatusContext struct {
+		Root lipgloss.Style
+	}
 }
 
 func InitStyles(theme theme.Theme) Styles {
@@ -241,6 +245,16 @@ func InitStyles(theme theme.Theme) Styles {
 		Border(common.ThinBorder, false, true, true, true)
 	s.Comment.Header = lipgloss.NewStyle().
 		Background(theme.SelectedBackground)
+
+	border := lipgloss.NormalBorder()
+	border.BottomLeft = border.MiddleLeft
+	s.StatusContext.Root = lipgloss.NewStyle().
+		BorderBottom(true).
+		BorderLeft(true).
+		BorderStyle(border).
+		BorderForeground(theme.FaintBorder).
+		Width(common.StatusContextWidth).
+		MaxWidth(common.StatusContextWidth)
 
 	return s
 }
