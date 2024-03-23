@@ -8,6 +8,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	graphql "github.com/cli/shurcooL-graphql"
 
 	"github.com/dlvhdr/gh-dash/data"
 	"github.com/dlvhdr/gh-dash/ui/pr"
@@ -143,12 +144,48 @@ var mockPr = data.PullRequestData{
 		},
 	},
 	IsDraft: false,
-	Commits: data.Commits{},
+	Commits: data.Commits{
+		Nodes: []struct{ Commit data.Commit }{
+			{Commit: data.Commit{
+				StatusCheckRollup: data.StatusCheckRollup{
+					Contexts: data.Contexts{
+						TotalCount: 4,
+						Nodes: []data.Context{{
+							Typename: "CheckRun",
+							CheckRun: data.CheckRun{
+								Name:       "warden/mergeBlock",
+								Status:     "COMPLETED",
+								Conclusion: "SUCCESS",
+								CheckSuite: data.CheckSuite{
+									Creator:     struct{ Login graphql.String }{Login: "dlvhdr"},
+									WorkflowRun: nil,
+								},
+								Text: "Successful in 3s — Merge away!",
+							},
+						},
+							{
+								Typename: "StatusContext",
+								StatusContext: data.StatusContext{
+									Context:     "buildkite/mono",
+									State:       "FAILURE",
+									Creator:     struct{ Login graphql.String }{Login: "buildkite"},
+									Description: "Build #64276 failed (20 minutes, 4 seconds)",
+								},
+							},
+						},
+					},
+				},
+			}},
+		},
+	},
 }
 
 func (m PRModel) View() string {
 	content := lipgloss.NewStyle().MarginLeft(3).MarginBottom(1).Render(m.headerView())
-	content = lipgloss.JoinVertical(lipgloss.Left, content, m.commentsView())
+
+	body := lipgloss.JoinHorizontal(lipgloss.Top, m.commentsView(), " ", m.statusesView())
+
+	content = lipgloss.JoinVertical(lipgloss.Left, content, body)
 
 	return content
 }
@@ -241,4 +278,56 @@ func (m *PRModel) commentView(comment data.Comment) string {
 	content := lipgloss.JoinVertical(lipgloss.Left, header, body)
 
 	return content
+}
+
+func (m *PRModel) statusesView() string {
+	statuses := make([]string, 0)
+	for _, commit := range mockPr.Commits.Nodes {
+		for _, context := range commit.Commit.StatusCheckRollup.Contexts.Nodes {
+			status := m.statusView(context)
+			statuses = append(statuses, status)
+			statuses = append(statuses, "")
+		}
+	}
+
+	return lipgloss.JoinVertical(lipgloss.Left, statuses...)
+}
+
+func (m *PRModel) statusView(context data.Context) string {
+	if context.Typename == "StatusContext" {
+		return m.statusContext(context.StatusContext)
+	} else {
+		return m.checkRun(context.CheckRun)
+	}
+}
+
+func (m *PRModel) statusContext(statusContext data.StatusContext) string {
+	var glyph string
+	if statusContext.State == "SUCCESS" {
+		glyph = m.common.Styles.Common.SuccessGlyph
+	} else {
+		glyph = m.common.Styles.Common.FailureGlyph
+	}
+
+	status := lipgloss.NewStyle().Bold(true).Render(string(statusContext.Context))
+	status = lipgloss.JoinVertical(lipgloss.Left, status, string(statusContext.Description))
+
+	status = lipgloss.JoinHorizontal(lipgloss.Top, glyph, " ", status)
+
+	return status
+}
+
+func (m *PRModel) checkRun(checkRun data.CheckRun) string {
+	var glyph string
+	if checkRun.Conclusion == "SUCCESS" {
+		glyph = m.common.Styles.Common.SuccessGlyph
+	} else {
+		glyph = m.common.Styles.Common.FailureGlyph
+	}
+
+	status := lipgloss.NewStyle().Bold(true).Render(string(checkRun.Name))
+	status = lipgloss.JoinVertical(lipgloss.Left, status, string(checkRun.Text))
+
+	status = lipgloss.JoinHorizontal(lipgloss.Top, glyph, " ", status)
+	return status
 }
