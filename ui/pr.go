@@ -137,6 +137,15 @@ var mockPr = data.PullRequestData{
 							StartLine: 0,
 							Line:      0,
 						},
+						{
+							Author: struct{ Login string }{
+								Login: "dlvhdr",
+							},
+							Body:      "Cupidatat non pariatur nulla do incididunt id sit deserunt minim anim. Proident mollit est ad. Laborum voluptate in et incididunt ipsum velit reprehenderit quis ut laborum esse labore aliqua. Irure mollit aliqua cupidatat proident magna aute id nostrud mollit.",
+							UpdatedAt: time.Now().AddDate(0, 0, -1),
+							StartLine: 0,
+							Line:      0,
+						},
 					},
 					TotalCount: 0,
 				},
@@ -379,9 +388,12 @@ func (m *PRModel) reviewThread(thread data.ReviewThread) string {
 	header := sc.Header.Copy().Width(w).Padding(0, 1).Render(author)
 
 	var comments []string
-	for _, c := range thread.Comments.Nodes {
+	for i, c := range thread.Comments.Nodes {
 		comment := m.reviewComment(c)
 		comments = append(comments, comment)
+		if i < len(thread.Comments.Nodes)-1 {
+			comments = append(comments, "")
+		}
 	}
 
 	body := sc.Body.Width(w - 2).Render(lipgloss.JoinVertical(lipgloss.Left, comments...))
