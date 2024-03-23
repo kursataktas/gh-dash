@@ -185,7 +185,7 @@ func (m PRModel) View() string {
 
 	body := lipgloss.JoinHorizontal(lipgloss.Top, m.commentsView(), " ", m.statusesView())
 
-	content = lipgloss.JoinVertical(lipgloss.Left, content, body)
+	content = lipgloss.JoinVertical(lipgloss.Left, content, body, m.reviewThreads())
 
 	return content
 }
@@ -336,4 +336,65 @@ func (m *PRModel) applyStatusBorder(status string, isLast bool) string {
 		s = s.BorderStyle(lipgloss.NormalBorder())
 	}
 	return s.Render(status)
+}
+
+func (m *PRModel) reviewThreads() string {
+	threads := make([]string, 0, len(mockPr.ReviewThreads.Nodes))
+	for i, c := range mockPr.ReviewThreads.Nodes {
+		cView := m.reviewThread(c)
+		border := lipgloss.NormalBorder()
+
+		vLine := ""
+		if i < len(mockPr.Comments.Nodes)-1 {
+			vLine = lipgloss.JoinVertical(lipgloss.Left, strings.Split(strings.Repeat(border.Left, lipgloss.Height(cView)), "")...)
+		}
+
+		tl := ""
+		if i == 0 {
+			tl = border.TopLeft
+		} else if i == len(mockPr.Comments.Nodes)-1 {
+			tl = border.BottomLeft
+		} else {
+			tl = border.MiddleLeft
+		}
+		hLine := tl + border.Top + border.Top
+
+		line := lipgloss.NewStyle().
+			Foreground(m.common.Theme.FaintBorder).
+			Render(
+				lipgloss.JoinVertical(lipgloss.Left, hLine, vLine),
+			)
+		threads = append(threads, lipgloss.JoinHorizontal(lipgloss.Top, line, cView))
+	}
+
+	return lipgloss.JoinVertical(lipgloss.Left, threads...)
+}
+
+func (m *PRModel) reviewThread(thread data.ReviewThread) string {
+	s := m.common.Styles
+	sc := s.Comment
+	w := m.common.Width
+
+	author := sc.Header.Copy().PaddingRight(1).Render(s.Common.MainTextStyle.Render(thread.Path))
+	header := sc.Header.Copy().Width(w).Padding(0, 1).Render(author)
+
+	var comments []string
+	for _, c := range thread.Comments.Nodes {
+		comment := m.reviewComment(c)
+		comments = append(comments, comment)
+	}
+
+	body := sc.Body.Width(w - 2).Render(lipgloss.JoinVertical(lipgloss.Left, comments...))
+	r := lipgloss.JoinVertical(lipgloss.Left, header, body)
+
+	return r
+}
+
+func (m *PRModel) reviewComment(comment data.ReviewComment) string {
+	r := m.common.Styles.Common.MainTextStyle.Render(comment.Author.Login)
+	r = lipgloss.JoinHorizontal(lipgloss.Top, r, " ", m.common.Styles.Common.FaintTextStyle.Render(utils.TimeElapsed(comment.UpdatedAt)))
+
+	r = lipgloss.JoinVertical(lipgloss.Left, r, comment.Body)
+
+	return r
 }
