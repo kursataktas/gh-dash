@@ -3,14 +3,15 @@ package ui
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	graphql "github.com/cli/shurcooL-graphql"
 
 	"github.com/dlvhdr/gh-dash/data"
+	"github.com/dlvhdr/gh-dash/mocks"
 	"github.com/dlvhdr/gh-dash/ui/pr"
 	"github.com/dlvhdr/gh-dash/ui/theme"
 	"github.com/dlvhdr/gh-dash/utils"
@@ -46,155 +47,12 @@ func (m PRModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-var mockPr = data.PullRequestData{
-	Number: 13261,
-	Title:  "Anim anim pariatur Lorem ea sint id aliquip",
-	Body:   "Voluptate culpa in non incididunt fugiat amet. Incididunt quis nostrud et eiusmod commodo reprehenderit nisi do aliquip. Proident est culpa excepteur dolore mollit id. Id excepteur commodo esse pariatur do incididunt id laborum anim est nostrud ullamco qui nostrud. Mollit ipsum incididunt tempor proident ut reprehenderit sint pariatur id. Quis non deserunt magna duis deserunt id ea et laborum.",
-	Author: struct{ Login string }{
-		Login: "dlvhdr",
-	},
-	UpdatedAt:      time.Now(),
-	Url:            "https://github.com/dlvhdr/gh-dash/pull/13261",
-	State:          "OPEN",
-	Mergeable:      "MERGEABLE",
-	ReviewDecision: "APPROVED",
-	Additions:      151,
-	Deletions:      126,
-	HeadRefName:    "dev",
-	BaseRefName:    "main",
-	HeadRepository: struct{ Name string }{
-		Name: "gh-dash",
-	},
-	HeadRef: struct{ Name string }{
-		Name: "dev",
-	},
-	Repository: data.Repository{
-		Name:          "gh-dash",
-		NameWithOwner: "dlvhdr/gh-dash",
-		IsArchived:    false,
-	},
-	Assignees: data.Assignees{
-		Nodes: []data.Assignee{
-			{
-				Login: "dlvhdr",
-			},
-		},
-	},
-	Comments: data.Comments{
-		Nodes: []data.Comment{
-			{
-				Author: struct{ Login string }{
-					Login: "dlvhdr",
-				},
-				Body:      "In in ea id laborum nulla minim fugiat eiusmod voluptate nisi. Cupidatat enim sit anim excepteur magna dolor eu. Ea ipsum aute consequat laboris sint. Qui id irure aliqua aliqua cupidatat voluptate nisi incididunt dolor consectetur do cillum dolor adipisicing reprehenderit. Deserunt non Lorem voluptate quis cillum. Nulla consequat consequat Lorem aute consectetur ex sunt cillum fugiat veniam ea minim sit eu officia. Sit duis esse culpa ipsum enim dolore exercitation incididunt sunt officia anim esse.",
-				UpdatedAt: time.Now().AddDate(0, 0, -2),
-			},
-			{
-				Author: struct{ Login string }{
-					Login: "tombenzera",
-				},
-				Body:      "Officia in veniam magna minim esse consectetur ea culpa cupidatat veniam non eiusmod velit velit elit. Adipisicing est dolore cillum esse sunt nulla excepteur veniam veniam do adipisicing in non et non.",
-				UpdatedAt: time.Now().AddDate(0, 0, -1),
-			},
-			{
-				Author: struct{ Login string }{
-					Login: "dmmulroy",
-				},
-				Body:      "Irure magna sint officia do. Officia in veniam magna minim esse consectetur ea culpa cupidatat veniam non eiusmod velit velit elit. Adipisicing est dolore cillum esse sunt nulla excepteur veniam veniam do adipisicing in non et non. Reprehenderit nostrud ipsum amet irure ad reprehenderit dolore irure amet ullamco labore qui. Et proident cillum cupidatat amet adipisicing enim minim ex consequat laborum. Officia veniam amet enim nostrud exercitation laborum minim ut quis dolor fugiat do.",
-				UpdatedAt: time.Now().AddDate(0, 0, -1),
-			},
-		},
-	},
-	LatestReviews: data.Reviews{
-		Nodes: []data.Review{
-			{
-				Author: struct{ Login string }{
-					Login: "dlvhdr",
-				},
-				Body:      "Labore voluptate amet enim eu cupidatat irure commodo magna anim nisi eu do exercitation consequat ad. Consequat officia culpa consequat est magna irure est tempor duis. Nostrud dolor ex ex do. Sunt dolor commodo anim.",
-				State:     "",
-				UpdatedAt: time.Now().AddDate(0, 0, -2),
-			},
-		},
-	},
-	ReviewThreads: data.ReviewThreads{
-		Nodes: []data.ReviewThread{
-			{
-				Id:           "1",
-				IsOutdated:   false,
-				OriginalLine: 1,
-				StartLine:    1,
-				Line:         1,
-				Path:         "ui/pr.go",
-				Comments: data.ReviewComments{
-					Nodes: []data.ReviewComment{
-						{
-							Author: struct{ Login string }{
-								Login: "kentcdodds",
-							},
-							Body:      "Eu ipsum laboris duis irure et laborum.",
-							UpdatedAt: time.Now().AddDate(0, 0, -1),
-							StartLine: 0,
-							Line:      0,
-						},
-						{
-							Author: struct{ Login string }{
-								Login: "dlvhdr",
-							},
-							Body:      "Cupidatat non pariatur nulla do incididunt id sit deserunt minim anim. Proident mollit est ad. Laborum voluptate in et incididunt ipsum velit reprehenderit quis ut laborum esse labore aliqua. Irure mollit aliqua cupidatat proident magna aute id nostrud mollit.",
-							UpdatedAt: time.Now().AddDate(0, 0, -1),
-							StartLine: 0,
-							Line:      0,
-						},
-					},
-					TotalCount: 0,
-				},
-			},
-		},
-	},
-	IsDraft: false,
-	Commits: data.Commits{
-		Nodes: []struct{ Commit data.Commit }{
-			{Commit: data.Commit{
-				StatusCheckRollup: data.StatusCheckRollup{
-					Contexts: data.Contexts{
-						TotalCount: 4,
-						Nodes: []data.Context{{
-							Typename: "CheckRun",
-							CheckRun: data.CheckRun{
-								Name:       "warden/mergeBlock",
-								Status:     "COMPLETED",
-								Conclusion: "SUCCESS",
-								CheckSuite: data.CheckSuite{
-									Creator:     struct{ Login graphql.String }{Login: "dlvhdr"},
-									WorkflowRun: nil,
-								},
-								Text: "Successful in 3s — Merge away!",
-							},
-						},
-							{
-								Typename: "StatusContext",
-								StatusContext: data.StatusContext{
-									Context:     "buildkite/mono",
-									State:       "FAILURE",
-									Creator:     struct{ Login graphql.String }{Login: "buildkite"},
-									Description: "Build #64276 failed (20 minutes, 4 seconds)",
-								},
-							},
-						},
-					},
-				},
-			}},
-		},
-	},
-}
-
 func (m PRModel) View() string {
 	content := lipgloss.NewStyle().MarginLeft(3).MarginBottom(1).Render(m.headerView())
 
-	body := lipgloss.JoinHorizontal(lipgloss.Top, m.commentsView(), " ", m.statusesView())
+	body := lipgloss.JoinHorizontal(lipgloss.Top, m.activitiesView(), " ", m.statusesView())
 
-	content = lipgloss.JoinVertical(lipgloss.Left, content, body, m.reviewThreads())
+	content = lipgloss.JoinVertical(lipgloss.Left, content, body)
 
 	return content
 }
@@ -203,28 +61,28 @@ func (m *PRModel) headerView() string {
 	content := ""
 	s := m.common.Styles
 
-	name := s.Common.FaintTextStyle.Render(mockPr.Repository.NameWithOwner)
+	name := s.Common.FaintTextStyle.Render(mocks.Pr.Repository.NameWithOwner)
 	title := lipgloss.JoinHorizontal(
 		lipgloss.Left,
-		s.Common.MainTextStyle.Render(mockPr.Title),
+		s.Common.MainTextStyle.Render(mocks.Pr.Title),
 		" ",
-		s.Common.FaintTextStyle.Render(fmt.Sprintf("#%d", mockPr.Number)),
+		s.Common.FaintTextStyle.Render(fmt.Sprintf("#%d", mocks.Pr.Number)),
 	)
 	content = lipgloss.JoinVertical(lipgloss.Left, content, name, title)
 
 	state := s.PrSidebar.PillStyle.Copy().
 		Background(s.Colors.OpenPR).
-		Render(mockPr.State)
+		Render(mocks.Pr.State)
 	mergeable := s.PrSidebar.PillStyle.Copy().
 		Background(s.Colors.MergedPR).
-		Render(mockPr.Mergeable)
+		Render(mocks.Pr.Mergeable)
 
 	branch := s.Common.FaintTextStyle.Render(lipgloss.JoinHorizontal(
 		lipgloss.Left,
 		"󰘬 ",
-		mockPr.BaseRefName,
+		mocks.Pr.BaseRefName,
 		"  ",
-		mockPr.HeadRefName,
+		mocks.Pr.HeadRefName,
 	))
 
 	pills := lipgloss.NewStyle().MarginTop(1).Render(lipgloss.JoinHorizontal(
@@ -238,36 +96,124 @@ func (m *PRModel) headerView() string {
 	return lipgloss.JoinVertical(lipgloss.Left, content, pills)
 }
 
-func (m *PRModel) commentsView() string {
-	comments := make([]string, 0, len(mockPr.Comments.Nodes))
-	for i, c := range mockPr.Comments.Nodes {
-		cView := m.commentView(c)
+type Activity interface {
+	UpdatedAt() time.Time
+	Icon() *string
+	View(m *PRModel) string
+}
+
+type commentModel struct {
+	data.Comment
+}
+
+func (c commentModel) UpdatedAt() time.Time {
+	return c.Comment.UpdatedAt
+}
+
+func (c commentModel) Icon() *string {
+	return nil
+}
+
+func (c commentModel) View(m *PRModel) string {
+	return m.commentView(c.Comment)
+}
+
+type reviewModel struct {
+	data.Review
+}
+
+func (r reviewModel) UpdatedAt() time.Time {
+	return r.Review.UpdatedAt
+}
+
+func (r reviewModel) Icon() *string {
+	icon := "󰈈"
+	return &icon
+}
+
+func (r reviewModel) View(m *PRModel) string {
+	s := m.common.Styles
+	sc := s.Comment
+	w := m.common.Width
+
+	header := sc.Header.Copy().Width(w-1).Padding(0, 1).Render(
+		fmt.Sprintf(
+			"%s reviewed %s",
+			r.Review.Author.Login,
+			utils.TimeElapsed(r.Review.UpdatedAt),
+		),
+	)
+	body := sc.Body.Width(w - 3).Render(r.Review.Body)
+	for _, comment := range r.Review.Comments.Nodes {
+
+	}
+
+	return lipgloss.JoinVertical(lipgloss.Left, header, body)
+}
+
+type reviewThreadModel struct {
+	data.ReviewThread
+}
+
+func (rt reviewThreadModel) UpdatedAt() time.Time {
+	if len(rt.ReviewThread.Comments.Nodes) == 0 {
+		return time.Time{}
+	}
+	return rt.ReviewThread.Comments.Nodes[0].UpdatedAt
+}
+
+func (rt reviewThreadModel) View(m *PRModel) string {
+	return m.reviewThread(rt.ReviewThread)
+}
+
+func (rt reviewThreadModel) Icon() *string {
+	icon := "󰈈"
+	return &icon
+}
+
+func (m *PRModel) activitiesView() string {
+	nodes := make([]string, 0, len(mocks.Pr.Comments.Nodes)+len(mocks.Pr.LatestReviews.Nodes))
+	sortedActivities := make([]Activity, 0, len(mocks.Pr.Comments.Nodes)+len(mocks.Pr.LatestReviews.Nodes))
+	for _, c := range mocks.Pr.Comments.Nodes {
+		sortedActivities = append(sortedActivities, commentModel{c})
+	}
+	for _, r := range mocks.Pr.LatestReviews.Nodes {
+		sortedActivities = append(sortedActivities, reviewModel{r})
+	}
+	sort.Slice(sortedActivities, func(i, j int) bool {
+		return sortedActivities[i].UpdatedAt().After(sortedActivities[j].UpdatedAt())
+	})
+
+	for i, activity := range sortedActivities {
+		view := activity.View(m)
 		border := lipgloss.NormalBorder()
 
 		vLine := ""
-		if i < len(mockPr.Comments.Nodes)-1 {
-			vLine = lipgloss.JoinVertical(lipgloss.Left, strings.Split(strings.Repeat(border.Left, lipgloss.Height(cView)), "")...)
+		if i < len(sortedActivities)-1 {
+			vLine = lipgloss.JoinVertical(lipgloss.Left, strings.Split(strings.Repeat(border.Left, lipgloss.Height(view)), "")...)
 		}
 
 		tl := ""
-		if i == 0 {
+		if activity.Icon() != nil {
+			tl = lipgloss.NewStyle().Foreground(m.common.Theme.PrimaryText).Render(*activity.Icon() + " ")
+		} else if i == 0 {
 			tl = border.TopLeft
-		} else if i == len(mockPr.Comments.Nodes)-1 {
+		} else if i == len(sortedActivities)-1 {
 			tl = border.BottomLeft
 		} else {
 			tl = border.MiddleLeft
 		}
-		hLine := tl + border.Top + border.Top
+		hLine := tl + lipgloss.NewStyle().Foreground(m.common.Theme.FaintBorder).Render(border.Top+border.Top)
 
 		line := lipgloss.NewStyle().
 			Foreground(m.common.Theme.FaintBorder).
 			Render(
 				lipgloss.JoinVertical(lipgloss.Left, hLine, vLine),
 			)
-		comments = append(comments, lipgloss.JoinHorizontal(lipgloss.Top, line, cView))
+		nodes = append(nodes, lipgloss.JoinHorizontal(lipgloss.Top, line, view))
 	}
 
-	return lipgloss.JoinVertical(lipgloss.Left, comments...)
+	return lipgloss.JoinVertical(lipgloss.Left, nodes...)
 }
 
 func (m *PRModel) commentView(comment data.Comment) string {
@@ -291,7 +237,7 @@ func (m *PRModel) commentView(comment data.Comment) string {
 
 func (m *PRModel) statusesView() string {
 	statuses := make([]string, 0)
-	for _, commit := range mockPr.Commits.Nodes {
+	for _, commit := range mocks.Pr.Commits.Nodes {
 		for i, context := range commit.Commit.StatusCheckRollup.Contexts.Nodes {
 			status := m.statusView(context, i == len(commit.Commit.StatusCheckRollup.Contexts.Nodes)-1)
 			statuses = append(statuses, status)
@@ -348,20 +294,20 @@ func (m *PRModel) applyStatusBorder(status string, isLast bool) string {
 }
 
 func (m *PRModel) reviewThreads() string {
-	threads := make([]string, 0, len(mockPr.ReviewThreads.Nodes))
-	for i, c := range mockPr.ReviewThreads.Nodes {
+	threads := make([]string, 0, len(mocks.Pr.ReviewThreads.Nodes))
+	for i, c := range mocks.Pr.ReviewThreads.Nodes {
 		cView := m.reviewThread(c)
 		border := lipgloss.NormalBorder()
 
 		vLine := ""
-		if i < len(mockPr.Comments.Nodes)-1 {
+		if i < len(mocks.Pr.Comments.Nodes)-1 {
 			vLine = lipgloss.JoinVertical(lipgloss.Left, strings.Split(strings.Repeat(border.Left, lipgloss.Height(cView)), "")...)
 		}
 
 		tl := ""
 		if i == 0 {
 			tl = border.TopLeft
-		} else if i == len(mockPr.Comments.Nodes)-1 {
+		} else if i == len(mocks.Pr.Comments.Nodes)-1 {
 			tl = border.BottomLeft
 		} else {
 			tl = border.MiddleLeft

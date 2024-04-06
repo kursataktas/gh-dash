@@ -102,6 +102,7 @@ type Commits struct {
 }
 
 type Comment struct {
+	Id     string
 	Author struct {
 		Login string
 	}
@@ -110,6 +111,7 @@ type Comment struct {
 }
 
 type ReviewComment struct {
+	Id     string
 	Author struct {
 		Login string
 	}
@@ -136,6 +138,7 @@ type Review struct {
 	Body      string
 	State     string
 	UpdatedAt time.Time
+	Comments  ReviewComments `graphql:"comments(first: 30)"`
 }
 
 type Reviews struct {
