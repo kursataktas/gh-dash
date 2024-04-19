@@ -20,12 +20,12 @@ var (
 	ViewSwitcherMargin = 1
 	TableHeaderHeight  = 2
 	ThinBorder         = lipgloss.Border{
-		Top:          lipgloss.NormalBorder().Top,
+		Top:          "▔",
 		Bottom:       "▁",
 		Left:         "▏",
 		Right:        "▕",
-		TopLeft:      lipgloss.NormalBorder().TopLeft,
-		TopRight:     lipgloss.NormalBorder().TopRight,
+		TopLeft:      "🭽",
+		TopRight:     "🭾",
 		BottomLeft:   "🭼",
 		BottomRight:  "🭿",
 		MiddleLeft:   lipgloss.NormalBorder().MiddleLeft,

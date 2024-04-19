@@ -12,6 +12,7 @@ import (
 
 	"github.com/dlvhdr/gh-dash/data"
 	"github.com/dlvhdr/gh-dash/mocks"
+	"github.com/dlvhdr/gh-dash/ui/common"
 	"github.com/dlvhdr/gh-dash/ui/pr"
 	"github.com/dlvhdr/gh-dash/ui/theme"
 	"github.com/dlvhdr/gh-dash/utils"
@@ -120,6 +121,7 @@ func (c commentModel) View(m *PRModel) string {
 
 type reviewModel struct {
 	data.Review
+	data.ReviewThread
 }
 
 func (r reviewModel) UpdatedAt() time.Time {
@@ -144,9 +146,7 @@ func (r reviewModel) View(m *PRModel) string {
 		),
 	)
 	body := sc.Body.Width(w - 3).Render(r.Review.Body)
-	for _, comment := range r.Review.Comments.Nodes {
-
-	}
+	body = lipgloss.JoinVertical(lipgloss.Left, body, "", m.reviewThread(r.ReviewThread))
 
 	return lipgloss.JoinVertical(lipgloss.Left, header, body)
 }
@@ -178,7 +178,8 @@ func (m *PRModel) activitiesView() string {
 		sortedActivities = append(sortedActivities, commentModel{c})
 	}
 	for _, r := range mocks.Pr.LatestReviews.Nodes {
-		sortedActivities = append(sortedActivities, reviewModel{r})
+		thread := mocks.Pr.ReviewThreads.Nodes[0]
+		sortedActivities = append(sortedActivities, reviewModel{r, thread})
 	}
 	sort.Slice(sortedActivities, func(i, j int) bool {
 		return sortedActivities[i].UpdatedAt().After(sortedActivities[j].UpdatedAt())
@@ -330,8 +331,9 @@ func (m *PRModel) reviewThread(thread data.ReviewThread) string {
 	sc := s.Comment
 	w := m.common.Width
 
-	author := sc.Header.Copy().PaddingRight(1).Render(s.Common.MainTextStyle.Render(thread.Path))
-	header := sc.Header.Copy().Width(w).Padding(0, 1).Render(author)
+	header := sc.Header.Copy().UnsetBackground().Border(common.ThinBorder).BorderForeground(
+		sc.Body.GetBorderBottomForeground(),
+	).Copy().Width(w-2).Padding(0, 1).Bold(true).Render(thread.Path)
 
 	var comments []string
 	for i, c := range thread.Comments.Nodes {
@@ -345,11 +347,11 @@ func (m *PRModel) reviewThread(thread data.ReviewThread) string {
 	body := sc.Body.Width(w - 2).Render(lipgloss.JoinVertical(lipgloss.Left, comments...))
 	r := lipgloss.JoinVertical(lipgloss.Left, header, body)
 
-	return r
+	return lipgloss.NewStyle().PaddingLeft(2).Render(r)
 }
 
 func (m *PRModel) reviewComment(comment data.ReviewComment) string {
-	r := m.common.Styles.Common.MainTextStyle.Render(comment.Author.Login)
+	r := m.common.Styles.Common.MainTextStyle.Underline(true).Render(comment.Author.Login)
 	r = lipgloss.JoinHorizontal(lipgloss.Top, r, " ", m.common.Styles.Common.FaintTextStyle.Render(utils.TimeElapsed(comment.UpdatedAt)))
 
 	r = lipgloss.JoinVertical(lipgloss.Left, r, comment.Body)
