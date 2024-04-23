@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -25,13 +26,14 @@ type Component interface {
 }
 
 type PRModel struct {
-	common pr.Common
+	common   pr.Common
+	viewport viewport.Model
 }
 
 func NewPRModel() PRModel {
 	ctx := context.Background()
 	c := pr.NewCommon(ctx, *theme.DefaultTheme, 80, 0)
-	return PRModel{common: c}
+	return PRModel{common: c, viewport: viewport.Model{}}
 }
 
 func (m PRModel) Init() tea.Cmd {
@@ -39,23 +41,39 @@ func (m PRModel) Init() tea.Cmd {
 }
 
 func (m PRModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.viewport.Width = msg.Width
+		m.viewport.Height = msg.Height
+		m.viewport.SetContent(m.content())
 	case tea.KeyMsg:
-		if msg.String() == "q" || msg.String() == "ctrl+c" {
+		switch {
+
+		case msg.Type == tea.KeyCtrlC, msg.String() == "q":
 			return m, tea.Quit
+
 		}
 	}
-	return m, nil
+
+	m.viewport, cmd = m.viewport.Update(msg)
+	return m, cmd
+}
+
+func (m PRModel) content() string {
+	content := lipgloss.NewStyle().MarginLeft(3).MarginBottom(1).Render(m.headerView())
+
+	activities := m.activitiesView()
+	statuses := m.statusesView()
+	body := lipgloss.JoinHorizontal(lipgloss.Top, activities, strings.Repeat(" ", m.viewport.Width-lipgloss.Width(activities)-lipgloss.Width(statuses)), statuses)
+
+	content = lipgloss.JoinVertical(lipgloss.Left, content, body)
+	return content
 }
 
 func (m PRModel) View() string {
-	content := lipgloss.NewStyle().MarginLeft(3).MarginBottom(1).Render(m.headerView())
 
-	body := lipgloss.JoinHorizontal(lipgloss.Top, m.activitiesView(), " ", m.statusesView())
-
-	content = lipgloss.JoinVertical(lipgloss.Left, content, body)
-
-	return content
+	return m.viewport.View()
 }
 
 func (m *PRModel) headerView() string {
@@ -237,6 +255,8 @@ func (m *PRModel) commentView(comment data.Comment) string {
 }
 
 func (m *PRModel) statusesView() string {
+	s := m.common.Styles.StatusContext.Root.Copy().BorderTop(true).Bold(true)
+	header := s.Render("󰝖 Checks")
 	statuses := make([]string, 0)
 	for _, commit := range mocks.Pr.Commits.Nodes {
 		for i, context := range commit.Commit.StatusCheckRollup.Contexts.Nodes {
@@ -245,7 +265,8 @@ func (m *PRModel) statusesView() string {
 		}
 	}
 
-	return lipgloss.JoinVertical(lipgloss.Left, statuses...)
+	rStatuses := lipgloss.JoinVertical(lipgloss.Left, statuses...)
+	return lipgloss.JoinVertical(lipgloss.Left, header, rStatuses)
 }
 
 func (m *PRModel) statusView(context data.Context, isLast bool) string {
@@ -331,9 +352,9 @@ func (m *PRModel) reviewThread(thread data.ReviewThread) string {
 	sc := s.Comment
 	w := m.common.Width
 
-	header := sc.Header.Copy().UnsetBackground().Border(common.ThinBorder).BorderForeground(
+	header := sc.Header.Copy().UnsetBackground().Border(common.ThinBorder).BorderBottom(false).BorderForeground(
 		sc.Body.GetBorderBottomForeground(),
-	).Copy().Width(w-2).Padding(0, 1).Bold(true).Render(thread.Path)
+	).Copy().Width(w-2).Padding(0, 1).Bold(true).Render(fmt.Sprintf(" %s", thread.Path))
 
 	var comments []string
 	for i, c := range thread.Comments.Nodes {
@@ -351,7 +372,7 @@ func (m *PRModel) reviewThread(thread data.ReviewThread) string {
 }
 
 func (m *PRModel) reviewComment(comment data.ReviewComment) string {
-	r := m.common.Styles.Common.MainTextStyle.Underline(true).Render(comment.Author.Login)
+	r := m.common.Styles.Common.MainTextStyle.Copy().Underline(true).Render(comment.Author.Login)
 	r = lipgloss.JoinHorizontal(lipgloss.Top, r, " ", m.common.Styles.Common.FaintTextStyle.Render(utils.TimeElapsed(comment.UpdatedAt)))
 
 	r = lipgloss.JoinVertical(lipgloss.Left, r, comment.Body)

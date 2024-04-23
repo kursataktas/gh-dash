@@ -60,6 +60,13 @@ In in ea id laborum nulla minim fugiat eiusmod voluptate nisi. Cupidatat enim si
 				Body:      "Officia in veniam magna minim esse consectetur ea culpa cupidatat veniam non eiusmod velit velit elit. Adipisicing est dolore cillum esse sunt nulla excepteur veniam veniam do adipisicing in non et non.",
 				UpdatedAt: time.Now().AddDate(0, 0, -1).Add(-time.Hour),
 			},
+			{
+				Author: struct{ Login string }{
+					Login: "caarlos0",
+				},
+				Body:      `Aliqua proident cupidatat in qui labore consectetur ea consectetur commodo minim tempor quis nulla sint id.`,
+				UpdatedAt: time.Now().AddDate(0, 0, 0),
+			},
 		},
 	},
 	LatestReviews: data.Reviews{
