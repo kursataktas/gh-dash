@@ -11,7 +11,7 @@ import (
 )
 
 type Common struct {
-	ctx           context.Context
+	Ctx           context.Context
 	Width, Height int
 	Styles        *ghctx.Styles
 	Theme         *theme.Theme
@@ -26,7 +26,7 @@ func NewCommon(ctx context.Context, theme theme.Theme, width, height int) Common
 	}
 	styles := ghctx.InitStyles(theme)
 	return Common{
-		ctx:    ctx,
+		Ctx:    ctx,
 		Width:  width,
 		Height: height,
 		Theme:  &theme,

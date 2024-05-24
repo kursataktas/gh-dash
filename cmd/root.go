@@ -45,7 +45,7 @@ func Execute() {
 	}
 }
 
-func createPRModel() (ui.PRModel, *os.File) {
+func createPRModel(url string) (ui.PRModel, *os.File) {
 	var loggerFile *os.File
 
 	var fileErr error
@@ -60,7 +60,7 @@ func createPRModel() (ui.PRModel, *os.File) {
 		loggerFile, _ = tea.LogToFile("debug.log", "debug")
 		slog.Print("Failed setting up logging", fileErr)
 	}
-	return ui.NewPRModel(), loggerFile
+	return ui.NewPRModel(url), loggerFile
 }
 
 func createModel(configPath string, debug bool) (ui.Model, *os.File) {
@@ -131,7 +131,7 @@ func init() {
 		"help for gh-dash",
 	)
 
-	rootCmd.Flags().Bool("pr", false, "view a single pull request")
+	rootCmd.Flags().String("pr", "", "view a single pull request")
 
 	rootCmd.Run = func(_ *cobra.Command, _ []string) {
 		debug, err := rootCmd.Flags().GetBool("debug")
@@ -139,13 +139,17 @@ func init() {
 			log.Fatal("Cannot parse debug flag", err)
 		}
 
-		pr, err := rootCmd.Flags().GetBool("pr")
+		// see https://github.com/charmbracelet/lipgloss/issues/73
+		lipgloss.SetHasDarkBackground(termenv.HasDarkBackground())
+		markdown.InitializeMarkdownStyle(termenv.HasDarkBackground())
+
+		pr, err := rootCmd.Flags().GetString("pr")
 		if err != nil {
 			log.Fatal("Cannot parse pr flag", err)
 		}
 
-		if pr {
-			model, logger := createPRModel()
+		if pr != "" {
+			model, logger := createPRModel(pr)
 			if logger != nil {
 				defer logger.Close()
 			}
@@ -158,10 +162,6 @@ func init() {
 			}
 			return
 		}
-
-		// see https://github.com/charmbracelet/lipgloss/issues/73
-		lipgloss.SetHasDarkBackground(termenv.HasDarkBackground())
-		markdown.InitializeMarkdownStyle(termenv.HasDarkBackground())
 
 		model, logger := createModel(cfgFile, debug)
 		if logger != nil {

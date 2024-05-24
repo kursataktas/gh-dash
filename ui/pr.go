@@ -14,6 +14,7 @@ import (
 	"github.com/dlvhdr/gh-dash/data"
 	"github.com/dlvhdr/gh-dash/mocks"
 	"github.com/dlvhdr/gh-dash/ui/common"
+	"github.com/dlvhdr/gh-dash/ui/markdown"
 	"github.com/dlvhdr/gh-dash/ui/pr"
 	"github.com/dlvhdr/gh-dash/ui/theme"
 	"github.com/dlvhdr/gh-dash/utils"
@@ -28,21 +29,32 @@ type Component interface {
 type PRModel struct {
 	common   pr.Common
 	viewport viewport.Model
+	url      string
+	pr       *data.PullRequestData
 }
 
-func NewPRModel() PRModel {
+func NewPRModel(prUrl string) PRModel {
 	ctx := context.Background()
 	c := pr.NewCommon(ctx, *theme.DefaultTheme, 80, 0)
-	return PRModel{common: c, viewport: viewport.Model{}}
+	return PRModel{common: c, viewport: viewport.Model{}, url: prUrl}
+}
+
+type prInitMsg struct{}
+
+func (m *PRModel) initScreen() tea.Msg {
+	return prInitMsg{}
 }
 
 func (m PRModel) Init() tea.Cmd {
-	return nil
+	return m.initScreen
 }
 
 func (m PRModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
+	case prInitMsg:
+		pr, _ := m.fetchPR(m.url)
+		m.pr = &pr
 	case tea.WindowSizeMsg:
 		m.viewport.Width = msg.Width
 		m.viewport.Height = msg.Height
@@ -61,7 +73,11 @@ func (m PRModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m PRModel) content() string {
-	content := lipgloss.NewStyle().MarginLeft(3).MarginBottom(1).Render(m.headerView())
+	if m.pr == nil {
+		return "Loading..."
+	}
+	ml := 3
+	content := lipgloss.NewStyle().MarginLeft(ml).Render(lipgloss.JoinVertical(lipgloss.Left, m.headerView(), "", m.descriptionView()))
 
 	activities := m.activitiesView()
 	statuses := m.statusesView()
@@ -80,28 +96,28 @@ func (m *PRModel) headerView() string {
 	content := ""
 	s := m.common.Styles
 
-	name := s.Common.FaintTextStyle.Render(mocks.Pr.Repository.NameWithOwner)
+	name := s.Common.FaintTextStyle.Render(m.pr.Repository.NameWithOwner)
 	title := lipgloss.JoinHorizontal(
 		lipgloss.Left,
-		s.Common.MainTextStyle.Render(mocks.Pr.Title),
+		s.Common.MainTextStyle.Render(m.pr.Title),
 		" ",
-		s.Common.FaintTextStyle.Render(fmt.Sprintf("#%d", mocks.Pr.Number)),
+		s.Common.FaintTextStyle.Render(fmt.Sprintf("#%d", m.pr.Number)),
 	)
 	content = lipgloss.JoinVertical(lipgloss.Left, content, name, title)
 
 	state := s.PrSidebar.PillStyle.Copy().
 		Background(s.Colors.OpenPR).
-		Render(mocks.Pr.State)
+		Render(m.pr.State)
 	mergeable := s.PrSidebar.PillStyle.Copy().
 		Background(s.Colors.MergedPR).
-		Render(mocks.Pr.Mergeable)
+		Render(m.pr.Mergeable)
 
 	branch := s.Common.FaintTextStyle.Render(lipgloss.JoinHorizontal(
 		lipgloss.Left,
 		"󰘬 ",
-		mocks.Pr.BaseRefName,
+		m.pr.BaseRefName,
 		"  ",
-		mocks.Pr.HeadRefName,
+		m.pr.HeadRefName,
 	))
 
 	pills := lipgloss.NewStyle().MarginTop(1).Render(lipgloss.JoinHorizontal(
@@ -113,6 +129,16 @@ func (m *PRModel) headerView() string {
 		branch,
 	))
 	return lipgloss.JoinVertical(lipgloss.Left, content, pills)
+}
+
+func (m *PRModel) descriptionView() string {
+	markdownRenderer := markdown.GetMarkdownRenderer(m.common.Width)
+	rendered, err := markdownRenderer.Render(m.pr.Body)
+	if err != nil {
+		return ""
+	}
+
+	return rendered
 }
 
 type Activity interface {
@@ -156,47 +182,53 @@ func (r reviewModel) View(m *PRModel) string {
 	sc := s.Comment
 	w := m.common.Width
 
-	header := sc.Header.Copy().Width(w-1).Padding(0, 1).Render(
+	header := sc.Header.Copy().Width(w-1).MaxWidth(w-1).Padding(0, 1).Render(
 		fmt.Sprintf(
 			"%s reviewed %s",
 			r.Review.Author.Login,
 			utils.TimeElapsed(r.Review.UpdatedAt),
 		),
 	)
-	body := sc.Body.Width(w - 3).Render(r.Review.Body)
+
+	markdownRenderer := markdown.GetMarkdownRenderer(w - 3)
+	rendered, err := markdownRenderer.Render(r.Review.Body)
+	if err != nil {
+		return ""
+	}
+	body := sc.Body.Width(w - 3).Render(rendered)
 	body = lipgloss.JoinVertical(lipgloss.Left, body, "", m.reviewThread(r.ReviewThread))
 
 	return lipgloss.JoinVertical(lipgloss.Left, header, body)
 }
 
-type reviewThreadModel struct {
-	data.ReviewThread
-}
-
-func (rt reviewThreadModel) UpdatedAt() time.Time {
-	if len(rt.ReviewThread.Comments.Nodes) == 0 {
-		return time.Time{}
-	}
-	return rt.ReviewThread.Comments.Nodes[0].UpdatedAt
-}
-
-func (rt reviewThreadModel) View(m *PRModel) string {
-	return m.reviewThread(rt.ReviewThread)
-}
-
-func (rt reviewThreadModel) Icon() *string {
-	icon := "󰈈"
-	return &icon
-}
+// type reviewThreadModel struct {
+// 	data.ReviewThread
+// }
+//
+// func (rt reviewThreadModel) UpdatedAt() time.Time {
+// 	if len(rt.ReviewThread.Comments.Nodes) == 0 {
+// 		return time.Time{}
+// 	}
+// 	return rt.ReviewThread.Comments.Nodes[0].UpdatedAt
+// }
+//
+// func (rt reviewThreadModel) View(m *PRModel) string {
+// 	return m.reviewThread(rt.ReviewThread)
+// }
+//
+// func (rt reviewThreadModel) Icon() *string {
+// 	icon := "󰈈"
+// 	return &icon
+// }
 
 func (m *PRModel) activitiesView() string {
-	nodes := make([]string, 0, len(mocks.Pr.Comments.Nodes)+len(mocks.Pr.LatestReviews.Nodes))
-	sortedActivities := make([]Activity, 0, len(mocks.Pr.Comments.Nodes)+len(mocks.Pr.LatestReviews.Nodes))
-	for _, c := range mocks.Pr.Comments.Nodes {
+	nodes := make([]string, 0, len(m.pr.Comments.Nodes)+len(mocks.Pr.LatestReviews.Nodes))
+	sortedActivities := make([]Activity, 0, len(m.pr.Comments.Nodes)+len(mocks.Pr.LatestReviews.Nodes))
+	for _, c := range m.pr.Comments.Nodes {
 		sortedActivities = append(sortedActivities, commentModel{c})
 	}
-	for _, r := range mocks.Pr.LatestReviews.Nodes {
-		thread := mocks.Pr.ReviewThreads.Nodes[0]
+	for _, r := range m.pr.LatestReviews.Nodes {
+		thread := m.pr.ReviewThreads.Nodes[0]
 		sortedActivities = append(sortedActivities, reviewModel{r, thread})
 	}
 	sort.Slice(sortedActivities, func(i, j int) bool {
@@ -247,7 +279,12 @@ func (m *PRModel) commentView(comment data.Comment) string {
 
 	header := sc.Header.Copy().Width(w).Padding(0, 1).Render(lipgloss.JoinHorizontal(lipgloss.Top, author, time))
 
-	body := sc.Body.Width(w - 2).Render(comment.Body)
+	markdownRenderer := markdown.GetMarkdownRenderer(w - 2)
+	rendered, err := markdownRenderer.Render(comment.Body)
+	if err != nil {
+		return ""
+	}
+	body := sc.Body.Width(w - 2).Render(rendered)
 
 	content := lipgloss.JoinVertical(lipgloss.Left, header, body)
 
@@ -258,7 +295,7 @@ func (m *PRModel) statusesView() string {
 	s := m.common.Styles.StatusContext.Root.Copy().BorderTop(true).Bold(true)
 	header := s.Render("󰝖 Checks")
 	statuses := make([]string, 0)
-	for _, commit := range mocks.Pr.Commits.Nodes {
+	for _, commit := range m.pr.Commits.Nodes {
 		for i, context := range commit.Commit.StatusCheckRollup.Contexts.Nodes {
 			status := m.statusView(context, i == len(commit.Commit.StatusCheckRollup.Contexts.Nodes)-1)
 			statuses = append(statuses, status)
@@ -315,37 +352,37 @@ func (m *PRModel) applyStatusBorder(status string, isLast bool) string {
 	return s.Render(status)
 }
 
-func (m *PRModel) reviewThreads() string {
-	threads := make([]string, 0, len(mocks.Pr.ReviewThreads.Nodes))
-	for i, c := range mocks.Pr.ReviewThreads.Nodes {
-		cView := m.reviewThread(c)
-		border := lipgloss.NormalBorder()
-
-		vLine := ""
-		if i < len(mocks.Pr.Comments.Nodes)-1 {
-			vLine = lipgloss.JoinVertical(lipgloss.Left, strings.Split(strings.Repeat(border.Left, lipgloss.Height(cView)), "")...)
-		}
-
-		tl := ""
-		if i == 0 {
-			tl = border.TopLeft
-		} else if i == len(mocks.Pr.Comments.Nodes)-1 {
-			tl = border.BottomLeft
-		} else {
-			tl = border.MiddleLeft
-		}
-		hLine := tl + border.Top + border.Top
-
-		line := lipgloss.NewStyle().
-			Foreground(m.common.Theme.FaintBorder).
-			Render(
-				lipgloss.JoinVertical(lipgloss.Left, hLine, vLine),
-			)
-		threads = append(threads, lipgloss.JoinHorizontal(lipgloss.Top, line, cView))
-	}
-
-	return lipgloss.JoinVertical(lipgloss.Left, threads...)
-}
+// func (m *PRModel) reviewThreads() string {
+// 	threads := make([]string, 0, len(m.pr.ReviewThreads.Nodes))
+// 	for i, c := range m.pr.ReviewThreads.Nodes {
+// 		cView := m.reviewThread(c)
+// 		border := lipgloss.NormalBorder()
+//
+// 		vLine := ""
+// 		if i < len(m.pr.Comments.Nodes)-1 {
+// 			vLine = lipgloss.JoinVertical(lipgloss.Left, strings.Split(strings.Repeat(border.Left, lipgloss.Height(cView)), "")...)
+// 		}
+//
+// 		tl := ""
+// 		if i == 0 {
+// 			tl = border.TopLeft
+// 		} else if i == len(m.pr.Comments.Nodes)-1 {
+// 			tl = border.BottomLeft
+// 		} else {
+// 			tl = border.MiddleLeft
+// 		}
+// 		hLine := tl + border.Top + border.Top
+//
+// 		line := lipgloss.NewStyle().
+// 			Foreground(m.common.Theme.FaintBorder).
+// 			Render(
+// 				lipgloss.JoinVertical(lipgloss.Left, hLine, vLine),
+// 			)
+// 		threads = append(threads, lipgloss.JoinHorizontal(lipgloss.Top, line, cView))
+// 	}
+//
+// 	return lipgloss.JoinVertical(lipgloss.Left, threads...)
+// }
 
 func (m *PRModel) reviewThread(thread data.ReviewThread) string {
 	s := m.common.Styles
@@ -378,4 +415,8 @@ func (m *PRModel) reviewComment(comment data.ReviewComment) string {
 	r = lipgloss.JoinVertical(lipgloss.Left, r, comment.Body)
 
 	return r
+}
+
+func (m *PRModel) fetchPR(url string) (data.PullRequestData, error) {
+	return data.FetchPullRequest(url)
 }
