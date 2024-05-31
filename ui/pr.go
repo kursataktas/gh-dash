@@ -53,7 +53,8 @@ func (m PRModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case prInitMsg:
-		pr, _ := m.fetchPR(m.url)
+		// pr, _ := m.fetchPR(m.url)
+		pr := mocks.Pr
 		m.pr = &pr
 	case tea.WindowSizeMsg:
 		m.viewport.Width = msg.Width
